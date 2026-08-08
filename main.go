@@ -1,12 +1,11 @@
 package main
 
 import (
-	"os"
 	"fmt"
-	"github.com/bitofaphilistine/internal/config"
+	"github.com/bitofaphilistine/blog-aggregator/internal/config"
 )
 
-user := os.Getenv("USER")
+var user = "Philip"
 
 func main() {
 	cfg, err := config.Read()
@@ -14,6 +13,8 @@ func main() {
 		fmt.Println("Error reading config:", err)
 		return
 	}
+
+	fmt.Println(*cfg)
 
 	err = cfg.SetUser(user)
 	if err != nil {
@@ -27,5 +28,5 @@ func main() {
 		return
 	}
 
-	fmt.Println(cfg)
+	fmt.Println(*cfg)
 }
