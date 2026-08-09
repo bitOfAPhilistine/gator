@@ -3,9 +3,11 @@ package main
 import (
 	"fmt"
 	"github.com/bitofaphilistine/blog-aggregator/internal/config"
+	"github.com/bitofaphilistine/blog-aggregator/internal/commands"
 )
 
 var user = "Philip"
+
 
 func main() {
 	cfg, err := config.Read()
