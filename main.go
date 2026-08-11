@@ -1,10 +1,13 @@
 package main
 
+import _ "github.com/lib/pq"
 import (
 	"fmt"
 	"os"
-	"github.com/bitofaphilistine/blog-aggregator/internal/config"
-	"github.com/bitofaphilistine/blog-aggregator/internal/commands"
+	"database/sql"
+	"github.com/bitofaphilistine/gator/internal/config"
+	"github.com/bitofaphilistine/gator/internal/commands"
+	"github.com/bitofaphilistine/gator/internal/database"
 )
 
 var user = "Philip"
@@ -17,8 +20,16 @@ func main() {
 		os.Exit(1)
 	}
 
+	db, err := sql.Open("postgres", cfg.DbUrl)
+	if err != nil {
+		fmt.Println("Error connecting to database:", err)
+		os.Exit(1)
+	}
+
 	state := commands.State{
 		Config: cfg,
+		Database: db,
+		Queries: database.New(db),
 	}
 
 	cmds := commands.Commands{
@@ -26,6 +37,7 @@ func main() {
 	}
 
 	cmds.Register("login", commands.HandlerLogin)
+	cmds.Register("register", commands.HandlerRegister)
 
 	if os.Args == nil || len(os.Args) < 2 {
 		fmt.Println("No command provided")

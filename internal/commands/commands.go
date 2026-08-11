@@ -2,12 +2,19 @@ package commands
 
 import (
 	"fmt"
-	"github.com/bitofaphilistine/blog-aggregator/internal/config"
+	"time"
+	"context"
+	"database/sql"
+	"github.com/google/uuid"
+	"github.com/bitofaphilistine/gator/internal/config"
+	"github.com/bitofaphilistine/gator/internal/database"
 )
 
 
 type State struct {
 	Config *config.Config
+	Database *sql.DB
+	Queries *database.Queries
 }
 
 type Command struct {
@@ -36,11 +43,42 @@ func HandlerLogin(s *State, cmd Command) error {
 		return fmt.Errorf("login command requires a username argument")
 	}
 
-	err := s.Config.SetUser(cmd.Args[0])
+	user, err := s.Queries.GetUser(context.Background(), cmd.Args[0])
+	if err != nil {
+		return fmt.Errorf("failed to get user: %w", err)
+	}
+
+	err = s.Config.SetUser(user.Username)
 	if err != nil {
 		return fmt.Errorf("failed to set user: %w", err)
 	}
-	fmt.Println("User set to:", cmd.Args[0])
+	fmt.Println("User set to:", user.Username)
+
+	return nil
+}
+
+func HandlerRegister(s *State, cmd Command) error {
+	if cmd.Args == nil || len(cmd.Args) < 1 {
+		return fmt.Errorf("register command requires a username argument")
+	}
+
+	userParams := database.CreateUserParams{
+		ID: uuid.New(),
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+		Username: cmd.Args[0],
+	}
+	user, err := s.Queries.CreateUser(context.Background(), userParams)
+	if err != nil {
+		return fmt.Errorf("failed to create user: %w", err)
+	}
+	fmt.Println("User created:", user.Username)
+	fmt.Println(user)
+
+	err = s.Config.SetUser(user.Username)
+	if err != nil {
+		return fmt.Errorf("failed to set user: %w", err)
+	}
 
 	return nil
 }
