@@ -38,6 +38,8 @@ func main() {
 
 	cmds.Register("login", commands.HandlerLogin)
 	cmds.Register("register", commands.HandlerRegister)
+	cmds.Register("reset", commands.HandlerResetDb)
+	cmds.Register("users", commands.HandlerListUsers)
 
 	if os.Args == nil || len(os.Args) < 2 {
 		fmt.Println("No command provided")

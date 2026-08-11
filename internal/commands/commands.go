@@ -82,3 +82,30 @@ func HandlerRegister(s *State, cmd Command) error {
 
 	return nil
 }
+
+func HandlerResetDb(s *State, cmd Command) error {
+	err := s.Queries.ResetUsers(context.Background())
+	if err != nil {
+		return fmt.Errorf("failed to reset users: %w", err)
+	}
+	fmt.Println("Users table reset successfully.")
+	return nil
+}
+
+func HandlerListUsers(s *State, cmd Command) error {
+	users, err := s.Queries.GetUsers(context.Background())
+	if err != nil {
+		return fmt.Errorf("failed to list users: %w", err)
+	}
+
+	fmt.Println("Registered Users:")
+	for _, user := range users {
+		if user.Username == s.Config.CurrentUserName {
+			fmt.Println(" * ", user.Username, "(current)")
+		} else {
+			fmt.Println(" * ", user.Username)
+		}
+	}
+
+	return nil
+}
