@@ -4,6 +4,7 @@ import _ "github.com/lib/pq"
 import (
 	"os"
 	"fmt"
+	"context"
 	"database/sql"
 	"github.com/bitofaphilistine/gator/internal/config"
 	"github.com/bitofaphilistine/gator/internal/commands"
@@ -12,6 +13,16 @@ import (
 
 var user = "Philip"
 
+
+func loginCheck(handler func(*commands.State, commands.Command, database.User) error) func(*commands.State, commands.Command) error {
+	return func(s *commands.State, cmd commands.Command) error {
+		user, err := s.Queries.GetUserByName(context.Background(), s.Config.CurrentUserName)
+		if err != nil {
+			return fmt.Errorf("failed to get current user: %w", err)
+		}
+		return handler(s, cmd, user)
+	}
+}
 
 func main() {
 	cfg, err := config.Read()
@@ -41,10 +52,11 @@ func main() {
 	cmds.Register("reset", commands.HandlerResetDb)
 	cmds.Register("users", commands.HandlerListUsers)
 	cmds.Register("agg", commands.HandlerAggregate)
-	cmds.Register("addfeed", commands.HandlerAddFeed)
+	cmds.Register("addfeed", loginCheck(commands.HandlerAddFeed))
 	cmds.Register("feeds", commands.HandlerListFeeds)
-	cmds.Register("follow", commands.HandlerFollowFeed)
-	cmds.Register("following", commands.HandlerListFollowedFeeds)
+	cmds.Register("follow", loginCheck(commands.HandlerFollowFeed))
+	cmds.Register("unfollow", loginCheck(commands.HandlerUnfollowFeed))
+	cmds.Register("following", loginCheck(commands.HandlerListFollowedFeeds))
 
 	if os.Args == nil || len(os.Args) < 2 {
 		fmt.Println("No command provided")

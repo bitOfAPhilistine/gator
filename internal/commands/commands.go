@@ -125,24 +125,35 @@ func HandlerListUsers(s *State, cmd Command) error {
 }
 
 func HandlerAggregate(s *State, cmd Command) error {
-	testUrl := "https://www.wagslane.dev/index.xml"
-	res, err := rss.FetchFeed(context.Background(), testUrl)
-	if err != nil {
-		return fmt.Errorf("failed to fetch feed: %w", err)
+	if cmd.Args == nil || len(cmd.Args) < 1 {
+		return fmt.Errorf("agg command requires an interval argument")
 	}
 
-	fmt.Println(res)
+	interval, err := time.ParseDuration(cmd.Args[0])
+	if err != nil {
+		return fmt.Errorf("failed to parse interval: %w", err)
+	}
+
+	fmt.Println("Collecting feeds every", cmd.Args[0])
+
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	for {
+		err := scrapeFeeds(s)
+		if err != nil {
+			fmt.Println("Error scraping feeds:", err)
+		}
+
+		<-ticker.C
+	}
+
 	return nil
 }
 
-func HandlerAddFeed(s *State, cmd Command) error {
+func HandlerAddFeed(s *State, cmd Command, user database.User) error {
 	if cmd.Args == nil || len(cmd.Args) < 2 {
 		return fmt.Errorf("addfeed command requires a name and url argument")
-	}
-
-	user, err := s.Queries.GetUserByName(context.Background(), s.Config.CurrentUserName)
-	if err != nil {
-		return fmt.Errorf("failed to get current user: %w", err)
 	}
 
 	feed, err := s.Queries.CreateFeed(context.Background(), database.CreateFeedParams{
@@ -198,7 +209,7 @@ func HandlerListFeeds(s *State, cmd Command) error {
 	return nil
 }
 
-func HandlerFollowFeed(s *State, cmd Command) error {
+func HandlerFollowFeed(s *State, cmd Command, user database.User) error {
 	if cmd.Args == nil || len(cmd.Args) < 1 {
 		return fmt.Errorf("follow command requires a feed url argument")
 	}
@@ -206,11 +217,6 @@ func HandlerFollowFeed(s *State, cmd Command) error {
 	feed, err := s.Queries.GetFeedByUrl(context.Background(), cmd.Args[0])
 	if err != nil {
 		return fmt.Errorf("failed to get feed by url: %w", err)
-	}
-
-	user, err := s.Queries.GetUserByName(context.Background(), s.Config.CurrentUserName)
-	if err != nil {
-		return fmt.Errorf("failed to get current user: %w", err)
 	}
 
 	follow, err := s.Queries.CreateFeedFollow(context.Background(), database.CreateFeedFollowParams{
@@ -228,12 +234,29 @@ func HandlerFollowFeed(s *State, cmd Command) error {
 	return nil
 }
 
-func HandlerListFollowedFeeds(s *State, cmd Command) error {
-	user, err := s.Queries.GetUserByName(context.Background(), s.Config.CurrentUserName)
-	if err != nil {
-		return fmt.Errorf("failed to get current user: %w", err)
+func HandlerUnfollowFeed(s *State, cmd Command, user database.User) error {
+	if cmd.Args == nil || len(cmd.Args) < 1 {
+		return fmt.Errorf("unfollow command requires a feed url argument")
 	}
 
+	feed, err := s.Queries.GetFeedByUrl(context.Background(), cmd.Args[0])
+	if err != nil {
+		return fmt.Errorf("failed to get feed by url: %w", err)
+	}
+
+	err = s.Queries.DeleteFeedFollow(context.Background(), database.DeleteFeedFollowParams{
+		UserID: user.ID,
+		FeedID: feed.ID,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to unfollow feed: %w", err)
+	}
+	
+	fmt.Printf("User %s unfollowed feed: %s", user.Username, feed.Name)
+	return nil
+}
+
+func HandlerListFollowedFeeds(s *State, cmd Command, user database.User) error {
 	follows, err := s.Queries.GetFeedFollowsForUser(context.Background(), user.ID)
 	if err != nil {
 		return fmt.Errorf("failed to get followed feeds: %w", err)
@@ -266,5 +289,32 @@ func HandlerListFollowedFeeds(s *State, cmd Command) error {
 		fmt.Printf(" * User: %s, Feed: %s\n", username, feedName)
 	}
 
+	return nil
+}
+
+
+func scrapeFeeds(s *State) error {
+	feed, err := s.Queries.GetNextFeedToFetch(context.Background())
+	if err != nil {
+		return fmt.Errorf("failed to get next feed to fetch: %w", err)
+	}
+
+	err = s.Queries.MarkFeedFetched(context.Background(), database.MarkFeedFetchedParams{
+		ID: feed.ID,
+		LastFetchedAt: sql.NullTime{Time: time.Now(), Valid: true},
+	})
+	if err != nil {
+		return fmt.Errorf("failed to mark feed as fetched: %w", err)
+	}
+
+	res, err := rss.FetchFeed(context.Background(), feed.Url)
+	if err != nil {
+		return fmt.Errorf("failed to fetch feed: %w", err)
+	}
+
+	fmt.Println(res.Channel.Title)
+	for _, item := range res.Channel.Item {
+		fmt.Println(" *", item.Title, "-", item.Link)
+	}
 	return nil
 }
