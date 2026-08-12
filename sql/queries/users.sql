@@ -8,23 +8,19 @@ VALUES (
 )
 RETURNING *;
 
--- name: GetUser :one
+-- name: GetUserByName :one
 SELECT *
 FROM users
 WHERE username = $1;
 
--- name: ResetUsers :exec
-DELETE FROM users;
+-- name: GetUserById :one
+SELECT *
+FROM users
+WHERE id = $1;
 
 -- name: GetUsers :many
 SELECT *
 FROM users;
 
--- name: CreateFeed :one
-INSERT INTO feeds (name, url, user_id)
-VALUES (
-    $1,
-    $2,
-    $3
-)
-RETURNING *;
+-- name: ResetUsers :exec
+DELETE FROM users;

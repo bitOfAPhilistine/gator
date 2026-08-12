@@ -42,6 +42,9 @@ func main() {
 	cmds.Register("users", commands.HandlerListUsers)
 	cmds.Register("agg", commands.HandlerAggregate)
 	cmds.Register("addfeed", commands.HandlerAddFeed)
+	cmds.Register("feeds", commands.HandlerListFeeds)
+	cmds.Register("follow", commands.HandlerFollowFeed)
+	cmds.Register("following", commands.HandlerListFollowedFeeds)
 
 	if os.Args == nil || len(os.Args) < 2 {
 		fmt.Println("No command provided")

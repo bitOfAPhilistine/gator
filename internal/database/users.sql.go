@@ -12,29 +12,6 @@ import (
 	"github.com/google/uuid"
 )
 
-const createFeed = `-- name: CreateFeed :one
-INSERT INTO feeds (name, url, user_id)
-VALUES (
-    $1,
-    $2,
-    $3
-)
-RETURNING name, url, user_id
-`
-
-type CreateFeedParams struct {
-	Name   string
-	Url    string
-	UserID uuid.UUID
-}
-
-func (q *Queries) CreateFeed(ctx context.Context, arg CreateFeedParams) (Feed, error) {
-	row := q.db.QueryRowContext(ctx, createFeed, arg.Name, arg.Url, arg.UserID)
-	var i Feed
-	err := row.Scan(&i.Name, &i.Url, &i.UserID)
-	return i, err
-}
-
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (id, created_at, updated_at, username)
 VALUES (
@@ -70,14 +47,32 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 	return i, err
 }
 
-const getUser = `-- name: GetUser :one
+const getUserById = `-- name: GetUserById :one
+SELECT id, created_at, updated_at, username
+FROM users
+WHERE id = $1
+`
+
+func (q *Queries) GetUserById(ctx context.Context, id uuid.UUID) (User, error) {
+	row := q.db.QueryRowContext(ctx, getUserById, id)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Username,
+	)
+	return i, err
+}
+
+const getUserByName = `-- name: GetUserByName :one
 SELECT id, created_at, updated_at, username
 FROM users
 WHERE username = $1
 `
 
-func (q *Queries) GetUser(ctx context.Context, username string) (User, error) {
-	row := q.db.QueryRowContext(ctx, getUser, username)
+func (q *Queries) GetUserByName(ctx context.Context, username string) (User, error) {
+	row := q.db.QueryRowContext(ctx, getUserByName, username)
 	var i User
 	err := row.Scan(
 		&i.ID,
