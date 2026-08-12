@@ -6,6 +6,7 @@ import (
 	"context"
 	"database/sql"
 	"github.com/google/uuid"
+	"github.com/bitofaphilistine/gator/internal/rss"
 	"github.com/bitofaphilistine/gator/internal/config"
 	"github.com/bitofaphilistine/gator/internal/database"
 )
@@ -101,11 +102,45 @@ func HandlerListUsers(s *State, cmd Command) error {
 	fmt.Println("Registered Users:")
 	for _, user := range users {
 		if user.Username == s.Config.CurrentUserName {
-			fmt.Println(" * ", user.Username, "(current)")
+			fmt.Println(" *", user.Username, "(current)")
 		} else {
-			fmt.Println(" * ", user.Username)
+			fmt.Println(" *", user.Username)
 		}
 	}
 
+	return nil
+}
+
+func HandlerAggregate(s *State, cmd Command) error {
+	testUrl := "https://www.wagslane.dev/index.xml"
+	res, err := rss.FetchFeed(context.Background(), testUrl)
+	if err != nil {
+		return fmt.Errorf("failed to fetch feed: %w", err)
+	}
+
+	fmt.Println(res)
+	return nil
+}
+
+func HandlerAddFeed(s *State, cmd Command) error {
+	if cmd.Args == nil || len(cmd.Args) < 2 {
+		return fmt.Errorf("addfeed command requires a name and url argument")
+	}
+
+	user, err := s.Queries.GetUser(context.Background(), s.Config.CurrentUserName)
+	if err != nil {
+		return fmt.Errorf("failed to get current user: %w", err)
+	}
+
+	feed, err := s.Queries.CreateFeed(context.Background(), database.CreateFeedParams{
+		Name: cmd.Args[0],
+		Url: cmd.Args[1],
+		UserID: user.ID,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create feed: %w", err)
+	}
+	
+	fmt.Println(feed)
 	return nil
 }

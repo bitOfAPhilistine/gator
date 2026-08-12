@@ -5,6 +5,12 @@ CREATE TABLE users (
     updated_at TIMESTAMP NOT NULL,
     username TEXT NOT NULL UNIQUE
 );
+CREATE TABLE feeds (
+    name TEXT PRIMARY KEY,
+    url TEXT NOT NULL UNIQUE,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE
+);
 
 -- +goose Down
+DROP TABLE feeds;
 DROP TABLE users;

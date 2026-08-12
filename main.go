@@ -2,8 +2,8 @@ package main
 
 import _ "github.com/lib/pq"
 import (
-	"fmt"
 	"os"
+	"fmt"
 	"database/sql"
 	"github.com/bitofaphilistine/gator/internal/config"
 	"github.com/bitofaphilistine/gator/internal/commands"
@@ -40,6 +40,8 @@ func main() {
 	cmds.Register("register", commands.HandlerRegister)
 	cmds.Register("reset", commands.HandlerResetDb)
 	cmds.Register("users", commands.HandlerListUsers)
+	cmds.Register("agg", commands.HandlerAggregate)
+	cmds.Register("addfeed", commands.HandlerAddFeed)
 
 	if os.Args == nil || len(os.Args) < 2 {
 		fmt.Println("No command provided")
