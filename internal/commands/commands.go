@@ -102,7 +102,6 @@ func HandlerRegister(s *State, cmd Command) error {
 		return fmt.Errorf("failed to create user: %w", err)
 	}
 	fmt.Println("User created:", user.Username)
-	fmt.Println(user)
 
 	err = s.Config.SetUser(user.Username)
 	if err != nil {
@@ -368,7 +367,7 @@ func scrapeFeeds(s *State) error {
 			publishedTime = time.Time{}
 		}
 
-		post, err := s.Queries.CreatePost(context.Background(), database.CreatePostParams{
+		_, err = s.Queries.CreatePost(context.Background(), database.CreatePostParams{
 			ID: uuid.New(),
 			CreatedAt: time.Now(),
 			Title: item.Title,
