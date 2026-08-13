@@ -4,9 +4,9 @@ WITH inserted AS (
     VALUES (
         $1,
         $2,
+        $2,
         $3,
-        $4,
-        $5
+        $4
     )
     RETURNING *
 )

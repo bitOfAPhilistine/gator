@@ -57,6 +57,7 @@ func main() {
 	cmds.Register("follow", loginCheck(commands.HandlerFollowFeed))
 	cmds.Register("unfollow", loginCheck(commands.HandlerUnfollowFeed))
 	cmds.Register("following", loginCheck(commands.HandlerListFollowedFeeds))
+	cmds.Register("browse", loginCheck(commands.HandlerListPosts))
 
 	if os.Args == nil || len(os.Args) < 2 {
 		fmt.Println("No command provided")

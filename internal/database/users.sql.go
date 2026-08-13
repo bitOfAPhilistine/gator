@@ -17,8 +17,8 @@ INSERT INTO users (id, created_at, updated_at, username)
 VALUES (
     $1,
     $2,
-    $3,
-    $4
+    $2,
+    $3
 )
 RETURNING id, created_at, updated_at, username
 `
@@ -26,17 +26,11 @@ RETURNING id, created_at, updated_at, username
 type CreateUserParams struct {
 	ID        uuid.UUID
 	CreatedAt time.Time
-	UpdatedAt time.Time
 	Username  string
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
-	row := q.db.QueryRowContext(ctx, createUser,
-		arg.ID,
-		arg.CreatedAt,
-		arg.UpdatedAt,
-		arg.Username,
-	)
+	row := q.db.QueryRowContext(ctx, createUser, arg.ID, arg.CreatedAt, arg.Username)
 	var i User
 	err := row.Scan(
 		&i.ID,

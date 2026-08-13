@@ -18,10 +18,10 @@ INSERT INTO feeds (id, created_at, updated_at, name, url, user_id)
 VALUES (
     $1,
     $2,
+    $2,
     $3,
     $4,
-    $5,
-    $6
+    $5
 )
 RETURNING id, created_at, updated_at, name, url, user_id, last_fetched_at
 `
@@ -29,7 +29,6 @@ RETURNING id, created_at, updated_at, name, url, user_id, last_fetched_at
 type CreateFeedParams struct {
 	ID        uuid.UUID
 	CreatedAt time.Time
-	UpdatedAt time.Time
 	Name      string
 	Url       string
 	UserID    uuid.UUID
@@ -39,7 +38,6 @@ func (q *Queries) CreateFeed(ctx context.Context, arg CreateFeedParams) (Feed, e
 	row := q.db.QueryRowContext(ctx, createFeed,
 		arg.ID,
 		arg.CreatedAt,
-		arg.UpdatedAt,
 		arg.Name,
 		arg.Url,
 		arg.UserID,

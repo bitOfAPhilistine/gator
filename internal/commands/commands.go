@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 	"context"
+	"strconv"
 	"database/sql"
 	"github.com/google/uuid"
 	"github.com/bitofaphilistine/gator/internal/rss"
@@ -40,24 +41,30 @@ func (c *Commands) Register(name string, f func(*State, Command) error) {
 
 
 func HandlerResetDb(s *State, cmd Command) error {
-	err := s.Queries.ResetUsers(context.Background())
-	if err != nil {
-		return fmt.Errorf("failed to reset users: %w", err)
+	targetCases := map[string][]func(context.Context) error {
+		"all": {s.Queries.ResetUsers, s.Queries.ResetFeeds, s.Queries.ResetFeedFollows, s.Queries.ResetPosts},
+		"users": {s.Queries.ResetUsers, s.Queries.ResetFeedFollows},
+		"feeds": {s.Queries.ResetFeeds, s.Queries.ResetFeedFollows, s.Queries.ResetPosts},
+		"feedfollows": {s.Queries.ResetFeedFollows},
+		"posts": {s.Queries.ResetPosts},
 	}
-	fmt.Println("Users table reset successfully.")
+	target := "all"
 
-	err = s.Queries.ResetFeeds(context.Background())
-	if err != nil {
-		return fmt.Errorf("failed to reset feeds: %w", err)
+	if cmd.Args != nil && len(cmd.Args) > 0 {
+		target = cmd.Args[0]
 	}
-	fmt.Println("Feeds table reset successfully.")
 
-	err = s.Queries.ResetFeedFollows(context.Background())
-	if err != nil {
-		return fmt.Errorf("failed to reset feed follows: %w", err)
+	if _, ok := targetCases[target]; !ok {
+		return fmt.Errorf("invalid reset target (all, users, feeds, feedfollows, posts): ", target)
 	}
-	fmt.Println("Feed follows table reset successfully.")
 
+	for _, reset := range targetCases[target] {
+		if err := reset(context.Background()); err != nil {
+			return fmt.Errorf("failed to run", reset, err)
+		}
+	}
+
+	fmt.Println(target, "table(s) reset successfully")
 	return nil
 }
 
@@ -88,7 +95,6 @@ func HandlerRegister(s *State, cmd Command) error {
 	userParams := database.CreateUserParams{
 		ID: uuid.New(),
 		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
 		Username: cmd.Args[0],
 	}
 	user, err := s.Queries.CreateUser(context.Background(), userParams)
@@ -159,7 +165,6 @@ func HandlerAddFeed(s *State, cmd Command, user database.User) error {
 	feed, err := s.Queries.CreateFeed(context.Background(), database.CreateFeedParams{
 		ID: uuid.New(),
 		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
 		Name: cmd.Args[0],
 		Url: cmd.Args[1],
 		UserID: user.ID,
@@ -173,7 +178,6 @@ func HandlerAddFeed(s *State, cmd Command, user database.User) error {
 	_, err = s.Queries.CreateFeedFollow(context.Background(), database.CreateFeedFollowParams{
 		ID: uuid.New(),
 		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
 		UserID: user.ID,
 		FeedID: feed.ID,
 	})
@@ -222,7 +226,6 @@ func HandlerFollowFeed(s *State, cmd Command, user database.User) error {
 	follow, err := s.Queries.CreateFeedFollow(context.Background(), database.CreateFeedFollowParams{
 		ID: uuid.New(),
 		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
 		UserID: user.ID,
 		FeedID: feed.ID,
 	})
@@ -292,6 +295,32 @@ func HandlerListFollowedFeeds(s *State, cmd Command, user database.User) error {
 	return nil
 }
 
+func HandlerListPosts(s *State, cmd Command, user database.User) error {
+	limit := int32(2)
+	if cmd.Args != nil && len(cmd.Args) > 0 {
+		arg, err := strconv.ParseUint(cmd.Args[0], 10, 32)
+		if err != nil {
+			return fmt.Errorf("invalid limit argument: %w", err)
+		}
+		limit = int32(arg)
+	}
+	fmt.Printf("Listing the latest %d posts for user: %s\n", limit, user.Username)
+
+	posts, err := s.Queries.GetPostsByUser(context.Background(), database.GetPostsByUserParams{
+		UserID: user.ID,
+		Limit: limit,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to get posts for user: %w", err)
+	}
+	
+	for _, post := range posts {
+		fmt.Printf(" * %s (%s)\n", post.Title, post.Url)
+	}
+
+	return nil
+}
+
 
 func scrapeFeeds(s *State) error {
 	feed, err := s.Queries.GetNextFeedToFetch(context.Background())
@@ -312,9 +341,45 @@ func scrapeFeeds(s *State) error {
 		return fmt.Errorf("failed to fetch feed: %w", err)
 	}
 
-	fmt.Println(res.Channel.Title)
 	for _, item := range res.Channel.Item {
-		fmt.Println(" *", item.Title, "-", item.Link)
+		var publishedTime time.Time
+		var err error
+		
+		for _, format := range []string{
+			time.Layout,
+			time.ANSIC,
+			time.UnixDate,
+			time.RubyDate,
+			time.RFC1123Z,
+			time.RFC1123,
+			time.RFC822Z,
+			time.RFC822,
+			time.RFC850,
+			time.RFC3339,
+			time.RFC3339Nano,
+		} {
+			publishedTime, err = time.Parse(format, item.PubDate)
+			if err == nil {
+				break
+			}
+		}
+		if err != nil {
+			fmt.Printf("Warning: failed to parse published date for item '%s': %v\n", item.Title, err)
+			publishedTime = time.Time{}
+		}
+
+		post, err := s.Queries.CreatePost(context.Background(), database.CreatePostParams{
+			ID: uuid.New(),
+			CreatedAt: time.Now(),
+			Title: item.Title,
+			Url: item.Link,
+			Description: sql.NullString{String: item.Description, Valid: true},
+			PublishedAt: sql.NullTime{Time: publishedTime, Valid: true},
+			FeedID: feed.ID,
+		})
+		if err != nil && err != sql.ErrNoRows {
+			return fmt.Errorf("failed to create post: %w", err)
+		}
 	}
 	return nil
 }
