@@ -30,19 +30,34 @@ func main() {
 		os.Exit(1)
 	}
 
-	cmd := commands.Command{
-		Name: os.Args[1],
-		Args: os.Args[2:],
-	}
-
-	var state commands.State
-
-	if cmd.Name == "init" {
-		err := commands.HandlerInit(&state, cmd)
-		if err != nil {
-			fmt.Println("Error executing command:", err)
+	if os.Args[1] == "init" {
+		if len(os.Args) < 2 {
+			fmt.Println("init command requires connection url")
 			os.Exit(1)
 		}
+
+		if err := config.Initialize(os.Args[2]); err != nil {
+			fmt.Println("failed to initialize config: %w", err)
+			os.Exit(1)
+		}
+
+		fmt.Println("Config initialized")
+		os.Exit(0)
+	} else if os.Args[1] == "help" {
+		fmt.Println(`Commands:
+help: print this message
+init [connection_url]: initialize the config file with the given connection url
+register [username]: add a user to the database
+login [username]: login as the given user (saved)
+users: list all users in the database
+addfeed [name] [url]: add an rss feed at the given url, starts as followed by the logged in user
+feeds: list all registered feeds
+follow [url]: follow the given feed as the current user
+unfollow [url]: unfollow the given feed as the current user
+following: list all feeds followed by the current user
+agg [interval]: downloads posts from each feed every interval
+browse [amount(optional)]: lists the latest posts from feeds followed by the current user
+reset [database(optional)]: reset the given database (users, feeds, posts, feed_follows, all), defaults to all, any databases dependant on the one reset will also be reset`)
 		os.Exit(0)
 	}
 
@@ -58,10 +73,15 @@ func main() {
 		os.Exit(1)
 	}
 
-	state = commands.State{
+	state := commands.State{
 		Config: cfg,
 		Database: db,
 		Queries: database.New(db),
+	}
+
+	cmd := commands.Command{
+		Name: os.Args[1],
+		Args: os.Args[2:],
 	}
 
 	cmds := commands.Commands{

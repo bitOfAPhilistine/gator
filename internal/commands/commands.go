@@ -320,19 +320,6 @@ func HandlerListPosts(s *State, cmd Command, user database.User) error {
 	return nil
 }
 
-func HandlerInit(s *State, cmd Command) error {
-	if cmd.Args == nil || len(cmd.Args) < 1 {
-		return fmt.Errorf("init command requires connection url")
-	}
-
-	if err := config.Initialize(cmd.Args[0]); err != nil {
-		return fmt.Errorf("failed to initialize config: %w", err)
-	}
-
-	fmt.Println("Config initialized")
-	return nil
-}
-
 
 func scrapeFeeds(s *State) error {
 	feed, err := s.Queries.GetNextFeedToFetch(context.Background())
