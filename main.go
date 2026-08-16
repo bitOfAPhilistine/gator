@@ -25,6 +25,27 @@ func loginCheck(handler func(*commands.State, commands.Command, database.User) e
 }
 
 func main() {
+	if os.Args == nil || len(os.Args) < 2 {
+		fmt.Println("No command provided")
+		os.Exit(1)
+	}
+
+	cmd := commands.Command{
+		Name: os.Args[1],
+		Args: os.Args[2:],
+	}
+
+	var state commands.State
+
+	if cmd.Name == "init" {
+		err := commands.HandlerInit(&state, cmd)
+		if err != nil {
+			fmt.Println("Error executing command:", err)
+			os.Exit(1)
+		}
+		os.Exit(0)
+	}
+
 	cfg, err := config.Read()
 	if err != nil {
 		fmt.Println("Error reading config:", err)
@@ -37,7 +58,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	state := commands.State{
+	state = commands.State{
 		Config: cfg,
 		Database: db,
 		Queries: database.New(db),
@@ -58,16 +79,6 @@ func main() {
 	cmds.Register("unfollow", loginCheck(commands.HandlerUnfollowFeed))
 	cmds.Register("following", loginCheck(commands.HandlerListFollowedFeeds))
 	cmds.Register("browse", loginCheck(commands.HandlerListPosts))
-
-	if os.Args == nil || len(os.Args) < 2 {
-		fmt.Println("No command provided")
-		os.Exit(1)
-	}
-
-	cmd := commands.Command{
-		Name: os.Args[1],
-		Args: os.Args[2:],
-	}
 
 	err = cmds.Run(&state, cmd)
 	if err != nil {

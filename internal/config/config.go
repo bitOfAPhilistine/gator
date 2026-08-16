@@ -52,3 +52,12 @@ func Write(config *Config) error {
 
 	return nil
 }
+
+func Initialize(connectionURL string) error {
+	initConfig := Config{
+		DbUrl: connectionURL,
+		CurrentUserName: "",
+	}
+
+	return Write(&initConfig)
+}

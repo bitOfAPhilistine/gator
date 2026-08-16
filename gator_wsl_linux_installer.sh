@@ -5,7 +5,7 @@ set -euo pipefail
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 
 echo "Moving executable into PATH..."
-sudo mv gator ${PATH%%:*}
+sudo mv ${SCRIPT_DIR}/gator ${PATH%%:*}
 
 echo "Checking for PostgreSQL..."
 
@@ -49,11 +49,23 @@ else
 fi
 
 # Set the postgres password
-sudo -u postgres psql -c "ALTER USER postgres PASSWORD 'postgres';"
+read -p "Enter database password: " PASSWORD
+sudo -u postgres psql -c "ALTER USER postgres PASSWORD '"$PASSWORD"';" >/dev/null
+CONNECTION_URL="postgres://postgres:"$PASSWORD"@localhost:5432/gator"
 
 # Initialize the database
 echo "Initializing database schema..."
-sudo -u postgres psql -d gator -f $SCRIPT_DIR"/sql/initdatabase.sql"
+if ! command -v goose >/dev/null 2>&1; then
+    echo "Goose not found, installing..."
+    sudo curl -fsSL https://raw.githubusercontent.com/pressly/goose/master/install.sh | sudo sh
+    echo "Goose installed."
+    echo "Version:"
+    goose -version
+fi
+goose postgres $CONNECTION_URL -dir ${SCRIPT_DIR}/sql/schema up
 
-echo
-echo "gator database setup complete."
+echo "Gator database setup complete."
+
+echo "Initializing config file..."
+gator init $CONNECTION_URL
+echo "Installastion complete!"
