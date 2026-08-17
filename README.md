@@ -5,8 +5,7 @@ This is a blog aggregator made for boot.dev ([Build a Blog Aggregator](https://w
 
 ## Installation
 ---
-For wsl or linux, a pre-made bash script has been made which can automatically install Gator and set up its database. To run it, simply enter the following code in your terminal:
-`sudo bash (WHEREVER YOU PUT GATOR)/gator/gator_wsl_linux_installer.sh`
+For wsl or linux, a pre-made bash script has been made which can automatically install Gator and set up its database. To run it, simply run the gator_wsl_linux_installer.sh file from your terminal.
 
 For other operating systems, the installation has to be manual:
 1. Install Postgres (v15 or later) [Download page](https://www.postgresql.org/download/)

@@ -10,10 +10,10 @@ VALUES (
 )
 RETURNING *;
 
--- name: GetFeedByUrl :one
+-- name: GetFeedByUrlOrName :one
 SELECT *
 FROM feeds
-WHERE url = $1;
+WHERE url = $1 OR name = $1;
 
 -- name: GetFeedById :one
 SELECT *

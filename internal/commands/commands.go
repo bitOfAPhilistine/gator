@@ -217,7 +217,7 @@ func HandlerFollowFeed(s *State, cmd Command, user database.User) error {
 		return fmt.Errorf("follow command requires a feed url argument")
 	}
 
-	feed, err := s.Queries.GetFeedByUrl(context.Background(), cmd.Args[0])
+	feed, err := s.Queries.GetFeedByUrlOrName(context.Background(), cmd.Args[0])
 	if err != nil {
 		return fmt.Errorf("failed to get feed by url: %w", err)
 	}
@@ -241,7 +241,7 @@ func HandlerUnfollowFeed(s *State, cmd Command, user database.User) error {
 		return fmt.Errorf("unfollow command requires a feed url argument")
 	}
 
-	feed, err := s.Queries.GetFeedByUrl(context.Background(), cmd.Args[0])
+	feed, err := s.Queries.GetFeedByUrlOrName(context.Background(), cmd.Args[0])
 	if err != nil {
 		return fmt.Errorf("failed to get feed by url: %w", err)
 	}
